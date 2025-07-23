@@ -4,7 +4,6 @@ import { parseISO, isAfter, isBefore } from "date-fns";
 export default factories.createCoreController(
   "api::apartment.apartment",
   ({ strapi }) => ({
-    // Пошук доступних квартир
     async findAvailable(ctx) {
       const { from, to } = ctx.query;
 
@@ -19,14 +18,12 @@ export default factories.createCoreController(
         return ctx.badRequest('"from" must be before "to"');
       }
 
-      // Отримуємо всі апартаменти з rent_records
       const apartments = await strapi.db
         .query("api::apartment.apartment")
         .findMany({
           populate: { rent_records: true },
         });
 
-      // Фільтруємо доступні квартири, які не мають оренди у заданому періоді
       const available = apartments.filter((apartment) =>
         (apartment.rent_records ?? []).every((record: any) => {
           const start = new Date(record.Start_Date);
@@ -38,7 +35,6 @@ export default factories.createCoreController(
       ctx.body = available;
     },
 
-    // Орендувати квартиру
     async rentApartment(ctx) {
       const { id } = ctx.params;
       const { from, to } = ctx.request.body.data || {};
@@ -47,7 +43,6 @@ export default factories.createCoreController(
       const allRentRecords = await strapi.db
         .query("api::rent-record.rent-record")
         .findMany();
-      console.log("All rent records:", allRentRecords);
 
       if (!user) {
         return ctx.unauthorized("User must be logged in");
@@ -63,7 +58,6 @@ export default factories.createCoreController(
         return ctx.badRequest('"from" must be before "to"');
       }
 
-      // Перевірка, що квартира існує
       const apartment = await strapi.db
         .query("api::apartment.apartment")
         .findOne({
@@ -75,7 +69,6 @@ export default factories.createCoreController(
         return ctx.notFound("Apartment not found");
       }
 
-      // Перевірка, що квартира доступна у цей період
       const isAvailable = (apartment.rent_records ?? []).every(
         (record: any) => {
           const start = new Date(record.Start_Date);
@@ -91,7 +84,6 @@ export default factories.createCoreController(
         );
       }
 
-      // Створюємо запис про оренду в rent-records
 
       const startDateStr = fromDate.toISOString().slice(0, 10); // "2025-08-13"
       const endDateStr = toDate.toISOString().slice(0, 10);
@@ -110,14 +102,12 @@ export default factories.createCoreController(
       ctx.body = rentRecord;
     },
 
-    // Отримати список квартир, які орендував користувач
     async findRented(ctx) {
       const user = ctx.state.user;
       if (!user) {
         return ctx.unauthorized("User must be logged in");
       }
 
-      // Знаходимо всі rent-records цього користувача, і "популюємо" квартири
       const rentRecords = await strapi.db
         .query("api::rent-record.rent-record")
         .findMany({
@@ -125,7 +115,6 @@ export default factories.createCoreController(
           populate: { apartment: true },
         });
 
-      // Витягуємо квартири з записів
       const apartments = rentRecords.map((record: any) => record.apartment);
 
       ctx.body = apartments;
